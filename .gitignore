@@ -1,0 +1,7 @@
+.vs/
+*.pdb
+*.exe
+*.ilk
+*.slnx
+*.obj
+CppProperties.json
