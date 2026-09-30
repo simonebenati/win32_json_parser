@@ -1,4 +1,4 @@
 {
-	"na me": 123, 
+	"na me": ["simone" , ["ciao",[true,false]], "simone", 123], 
 	"simone": "gas"
 }

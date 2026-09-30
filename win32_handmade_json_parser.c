@@ -115,7 +115,7 @@ internal int parse_and_extract_key(char *json_value, normalized_key *key)
 	}
 	key->length = i - right_blanks - left_blanks;
 	key->string = json_value + left_blanks;
-	debug_print_string(key->string, key->length);
+	//debug_print_string(key->string, key->length);
 	return i;
 }
 
@@ -142,6 +142,7 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 				if(json_value[i] == '\"' && json_value[i-1] != '\\')
 				{
 					end_quotes = 1;
+					++i;
 					continue;
 				}
 				else if(json_value[i] == '\"' && json_value[i-1] == '\\')
@@ -177,6 +178,7 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 				puts("panic: invalid boolean");
 				exit(1);
 			}
+			++i;
 			value->length = 4;
 			value->string = json_value + left_blanks;
 			debug_print_string(value->string, value->length);
@@ -202,6 +204,7 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 				puts("panic: invalid boolean");
 				exit(1);
 			}
+			++i;
 			value->length = 5;
 			value->string = json_value + left_blanks;
 			debug_print_string(value->string, value->length);
@@ -209,6 +212,27 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 		break;
 		case '[':
 		{
+			++i;
+			char tmp_debug = '\0';
+			while(json_value[i] != ']')
+			{
+				i+=parse_and_extract_value(json_value + i, value);
+				tmp_debug = json_value[i];
+				while(json_value[i] == ' ' || json_value[i] == '\t' ||
+					json_value[i] == '\r' || json_value[i] == '\n')
+				{
+					++i;
+				}
+				if(json_value[i] == ',')
+				{
+					++i;
+					continue;
+				}
+			}
+			++i;
+			value->length = i - left_blanks;
+			value->string = json_value + left_blanks;
+			debug_print_string(value->string, value->length);
 		}
 		break;
 		case '{':
@@ -228,7 +252,8 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 					debug_char = json_value[i];
 				}
 				if(json_value[i] != ' ' && json_value[i] != '\t' &&
-					json_value[i] != '\r' && json_value[i] != '\n' && json_value[i] != ',' && json_value[i] != '}')
+					json_value[i] != '\r' && json_value[i] != '\n' && 
+						json_value[i] != ',' && json_value[i] != '}' && json_value[i] != ']')
 				{
 					puts("panic: invalid number");
 					exit(1);
@@ -245,43 +270,6 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 		}
 	}
 	return i;
-}
-
-//NOTE(simone): not necessarily needed the first i = 0 part to be normalized.
-internal void normalize_value(char *json_value, int count, normalized_value *norm_value)
-{
-	int i = 0;
-	while(json_value[i] == ' ' || json_value[i] == '\t' ||
-			json_value[i] == '\r' || json_value[i] == '\n')
-	{
-		++i;
-	}
-	int x = count - 1;
-	while(json_value[x] == ' ' || json_value[x] == '\t' ||
-			json_value[x] == '\r' || json_value[x] == '\n')
-	{
-		--x;
-	}
-
-	if(x - i < 0)
-	{
-		puts("panic in fn normalize_value()");
-		exit(1);
-	}
-	norm_value->length = x - i;
-	norm_value->string = json_value + i;
-
-	int len = 0;
-	//NOTE(simone): remove these debug steps;
-	printf("debug norm_value->length: %d\n", norm_value->length);
-	puts("debugging in normalize_value\n");
-	while(len <= norm_value->length)
-	{
-		putchar(norm_value->string[len]);
-		++len;
-	}
-	puts("\n");
-	return;
 }
 
 internal int8 string_checker(int count, char *json_value)
@@ -408,11 +396,13 @@ int main(int argc, char **argv)
 	normalized_key key_to_print = {};
 
 	// TODO(simone): switch to a while loop;
-	for(SIZE_T i = 1; i < file_size_in_bytes-3; ++i)
+	int i=1;
+	while(i < file_size_in_bytes-3)
 	{
 		debug_current_char = file_data[i];
 		if(file_data[i] == '\n' || file_data[i] == ' ' || file_data[i] == '\r' || file_data[i] == '\t')
 		{
+			++i;
 			continue;
 		}
 		i += (parse_and_extract_key(file_data + i, &key_to_print) + 1); //+1 indicates to start further after parsing ':'
