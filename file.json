@@ -1,5 +1,5 @@
 {
 	"na me": ["simone" , ["ciao",[true,false]], "simone", 123], 
-	"person": {"name": "simone"},
+	"person": {   "surname": "bemato", "age":123 }},
 	"simone": "gas"
 }

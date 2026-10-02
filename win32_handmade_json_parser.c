@@ -217,7 +217,9 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 		break;
 		case '{':
 		{
+
 			++i;
+			char tmp_debug = json_value[i];
 			while(json_value[i] != '}')
 			{
 				while(json_value[i] == ' ' || json_value[i] == '\t' ||
@@ -225,15 +227,19 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 				{
 					++i;
 				}
+				tmp_debug = json_value[i];
 				if(json_value[i] == '}')
 				{
-					++i;
+					tmp_debug = json_value[i];
 					continue;
 				}
 				i += (parse_and_extract_key(json_value + i, value) + 1);
+				tmp_debug = json_value[i];
 				i += (parse_and_extract_value(json_value + i, value));
+				tmp_debug = json_value[i];
 			}
 			++i;
+			tmp_debug = json_value[i];
 			value->length = i - left_blanks;
 			value->string = json_value + left_blanks;
 		}
