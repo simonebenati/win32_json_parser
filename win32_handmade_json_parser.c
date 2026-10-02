@@ -5,27 +5,7 @@
 #include <windows.h>
 #include "win32_handmade_json_parser.h"
 
-#define int8 char
-#define uint64 long
-#define internal static
-#define true 1
-#define false 0
-
-// NOTE(simone): The length here is the index length.
-// Therefore in loops we must use equal to len or we skip the last char.
-typedef struct
-{
-	uint64 length;
-	char *string;
-} normalized_value;
-
-typedef struct
-{
-	uint64 length;
-	char *string;
-} normalized_key;
-
-internal void debug_print_string(char *debug_string, uint64 length)
+internal void debug_print_string(const char *debug_string, uint64 length)
 {
 	int i = 0;
 	puts("***STRING DEBUGGING: ");
@@ -37,7 +17,7 @@ internal void debug_print_string(char *debug_string, uint64 length)
 	puts(" ***\n");
 }
 
-internal int parse_and_extract_key(char *json_value, normalized_key *key)
+internal int parse_and_extract_key(const char *json_value, normalized_key *key)
 {
 	int i = 0;
 	while(json_value[i] == ' ' || json_value[i] == '\t' ||
@@ -119,7 +99,7 @@ internal int parse_and_extract_key(char *json_value, normalized_key *key)
 	return i;
 }
 
-internal int parse_and_extract_value(char *json_value, normalized_value *value)
+internal int parse_and_extract_value(const char *json_value, normalized_value *value)
 {
 	int i = 0;
 	char debug_value_tmp = json_value[i];
@@ -237,6 +217,25 @@ internal int parse_and_extract_value(char *json_value, normalized_value *value)
 		break;
 		case '{':
 		{
+			++i;
+			while(json_value[i] != '}')
+			{
+				while(json_value[i] == ' ' || json_value[i] == '\t' ||
+						json_value[i] == '\r' || json_value[i] == '\n')
+				{
+					++i;
+				}
+				if(json_value[i] == '}')
+				{
+					++i;
+					continue;
+				}
+				i += (parse_and_extract_key(json_value + i, value) + 1);
+				i += (parse_and_extract_value(json_value + i, value));
+			}
+			++i;
+			value->length = i - left_blanks;
+			value->string = json_value + left_blanks;
 		}
 		break;
 		default:
@@ -392,10 +391,9 @@ int main(int argc, char **argv)
 	char last_char = '\0';
 	char debug_current_char = '\0';
 
-	normalized_value string_to_print = {};
 	normalized_key key_to_print = {};
+	normalized_value string_to_print = {};
 
-	// TODO(simone): switch to a while loop;
 	int i=1;
 	while(i < file_size_in_bytes-3)
 	{

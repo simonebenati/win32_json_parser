@@ -1,4 +1,5 @@
 {
 	"na me": ["simone" , ["ciao",[true,false]], "simone", 123], 
+	"person": {"name": "simone"},
 	"simone": "gas"
 }
