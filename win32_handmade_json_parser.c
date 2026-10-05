@@ -5,6 +5,32 @@
 #include <windows.h>
 #include "win32_handmade_json_parser.h"
 
+int x = 0;
+
+internal inline uint64 find_comma(const char *json_value, const uint64 file_size, int i)
+{
+	if (x==0 || i >= file_size - 3)
+	{
+		return;
+	}
+
+	uint64 x = 0;
+	while(json_value[x] == ' ' || json_value[x] == '\t' ||
+		json_value[x] == '\r' || json_value[x] == '\n')
+	{
+		++x;
+	}
+	if(json_value[x] != ',' && json_value[x] != ']' && json_value[x] != '}') // Square bracket because nested elem.
+	{
+		putchar(json_value[x]);
+		putchar("\n");
+		puts("panic: malformed json");
+		exit(1);
+	}
+	//++i;
+	return x;
+}
+
 internal void debug_print_string(const char *debug_string, uint64 length)
 {
 	int i = 0;
@@ -26,6 +52,7 @@ internal int parse_and_extract_key(const char *json_value, normalized_key *key)
 		++i;
 	}
 	char temp_debug = json_value[i];
+	//TODO(simone): verify if this comma if condition is required still.
 	if(json_value[i] == ',')
 	{
 		++i;
@@ -81,7 +108,7 @@ internal int parse_and_extract_key(const char *json_value, normalized_key *key)
 			continue;
 		}
 		
-		if((end_quotes == 0 || end_colon == 0) && json_value[i] == '}')
+		if((end_quotes == 0 || end_colon == 0) && (json_value[i] == '}' || json_value[i] == ']'))
 		{
 			puts("panic! invalid key");
 			exit(1);
@@ -95,11 +122,11 @@ internal int parse_and_extract_key(const char *json_value, normalized_key *key)
 	}
 	key->length = i - right_blanks - left_blanks;
 	key->string = json_value + left_blanks;
-	//debug_print_string(key->string, key->length);
+	debug_print_string(key->string, key->length);
 	return i;
 }
 
-internal int parse_and_extract_value(const char *json_value, normalized_value *value)
+internal int parse_and_extract_value(const char *json_value, normalized_value *value, uint64 file_size)
 {
 	int i = 0;
 	char debug_value_tmp = json_value[i];
@@ -130,7 +157,7 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 					puts("panic! invalid value format. offending char not properly escaped");
 					exit(1);
 				}
-				if(json_value[i] == '}')
+				if(json_value[i] == '}' || json_value[i] == ']')
 				{
 					puts("panic! reached end of file without parsing a valid value");
 					exit(1);
@@ -139,7 +166,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			}
 			value->length = i - left_blanks;
 			value->string = json_value + left_blanks;
-			debug_print_string(value->string, value->length);
+			//debug_print_string(value->string, value->length);
+			++x;
 		}
 		break;
 		case 't':
@@ -161,7 +189,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			++i;
 			value->length = 4;
 			value->string = json_value + left_blanks;
-			debug_print_string(value->string, value->length);
+			//debug_print_string(value->string, value->length);
+			++x;
 		}
 		break;
 		case 'f':
@@ -187,7 +216,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			++i;
 			value->length = 5;
 			value->string = json_value + left_blanks;
-			debug_print_string(value->string, value->length);
+			//debug_print_string(value->string, value->length);
+			++x;
 		}
 		break;
 		case '[':
@@ -196,7 +226,7 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			char tmp_debug = '\0';
 			while(json_value[i] != ']')
 			{
-				i+=parse_and_extract_value(json_value + i, value);
+				i+=parse_and_extract_value(json_value + i, value, file_size);
 				tmp_debug = json_value[i];
 				while(json_value[i] == ' ' || json_value[i] == '\t' ||
 					json_value[i] == '\r' || json_value[i] == '\n')
@@ -212,7 +242,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			++i;
 			value->length = i - left_blanks;
 			value->string = json_value + left_blanks;
-			debug_print_string(value->string, value->length);
+			//debug_print_string(value->string, value->length);
+			++x;
 		}
 		break;
 		case '{':
@@ -235,13 +266,14 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 				}
 				i += (parse_and_extract_key(json_value + i, value) + 1);
 				tmp_debug = json_value[i];
-				i += (parse_and_extract_value(json_value + i, value));
+				i += (parse_and_extract_value(json_value + i, value, file_size));
 				tmp_debug = json_value[i];
 			}
 			++i;
 			tmp_debug = json_value[i];
 			value->length = i - left_blanks;
 			value->string = json_value + left_blanks;
+			++x;
 		}
 		break;
 		default:
@@ -265,7 +297,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 				}
 				value->length = i - left_blanks;
 				value->string = json_value + left_blanks;
-				debug_print_string(value->string, value->length);
+				//debug_print_string(value->string, value->length);
+				++x;
 			}
 			else
 			{
@@ -274,86 +307,8 @@ internal int parse_and_extract_value(const char *json_value, normalized_value *v
 			}
 		}
 	}
+	i += find_comma(json_value + i, file_size, i);
 	return i;
-}
-
-internal int8 string_checker(int count, char *json_value)
-{
-	char json_val0 = json_value[0];
-	char json_val_end = json_value[count];
-	char json_val_test = json_value[count-1];
-	if(json_value[0] == '\"' && json_value[count-1] == '\"')
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-internal int8 num_checker(int count, char *json_value)
-{
-	char debug_num_checker = '\0';
-	if(json_value[0] >= 48 && json_value[0] <= 57)
-	{
-		while(count > 0 && json_value[count] >= 48 && json_value[count] <= 57)
-		{
-			--count;
-		}
-		if(count == 0)
-		{
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	else
-	{
-		return false;
-	}
-}
-
-/* NOTE(simone): bool_value wants to be 0 or 1. On that case we will assign to count to 5 or 4
- * 5 for 'false' and 4 for 'true' and a constant true/false string will be initialized */
-internal int8 bool_checker(int8 bool_value, char *json_value)
-{
-	//TODO(simone): rewrite this as an handmade assert
-	if (bool_value < 0 || bool_value > 1)
-	{
-		exit(1);
-	}
-
-	int8 len = bool_value == 0 ? 5 : 4;
-	const char *compare_value = bool_value == 0 ? "false" : "true";
-	for(int i=0; i<len; ++i)
-	{
-		if (json_value[i] != compare_value[i])
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-internal int8 array_checker(uint64 count, char *json_value)
-{
-	if(json_value[0] != '[' || json_value[count] != ']')
-	{
-		puts("invalid array format");
-		return false;
-	}
-	for(int i=1; i<count; ++i)
-	{
-		 if(json_value[i] == ',')
-		 {
-			 eval_value_type(json_value + i, i);
-		 }
-	}
-	return true;
-
 }
 
 int main(int argc, char **argv)
@@ -380,17 +335,7 @@ int main(int argc, char **argv)
 	{
 		exit(1);
 	}
-	if(file_data[0] != '{')
-	{
-		printf("invalid json beginnig check your syntax");
-		exit(1);
-	}
-	//NOTE(simone): it is -3 because windows is dogshit and adds other chars implicitly
-	if(file_data[file_size_in_bytes-3] != '}')
-	{
-		printf("invalid end of json %d", file_data[file_size_in_bytes-3]);
-		exit(1);
-	}
+	
 	//NOTE(simone): verify if this int is suitable
 	int keys_count = 0;
 	int values_count = 0;
@@ -399,8 +344,11 @@ int main(int argc, char **argv)
 
 	normalized_key key_to_print = {};
 	normalized_value string_to_print = {};
+	normalized_object object = {};
 
-	int i=1;
+	int i = 0;
+	int elem = 0;
+
 	while(i < file_size_in_bytes-3)
 	{
 		debug_current_char = file_data[i];
@@ -409,12 +357,14 @@ int main(int argc, char **argv)
 			++i;
 			continue;
 		}
-		i += (parse_and_extract_key(file_data + i, &key_to_print) + 1); //+1 indicates to start further after parsing ':'
-		debug_current_char = file_data[i];
-		i += (parse_and_extract_value(file_data + i, &string_to_print)); 
-		debug_current_char = file_data[i];
-		last_char = file_data[i];
 
+		i += (parse_and_extract_value(file_data + i, &string_to_print,
+			file_size_in_bytes - 3)); 
+		debug_current_char = file_data[i];
+		//+1 indicates to start further after parsing ':'
+		// i += (parse_and_extract_key(file_data + i, &key_to_print) + 1);
+		// debug_current_char = file_data[i];
+		last_char = file_data[i];
 	}
 	printf("total scanned keys: %d total values scanned %d\n", keys_count, values_count);
 
