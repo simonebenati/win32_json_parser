@@ -9,9 +9,9 @@ int x = 0;
 
 internal inline uint64 find_comma(const char *json_value, const uint64 file_size, int i)
 {
-	if (x==0 || i >= file_size - 3)
+	if (x==0 || i >= file_size)
 	{
-		return;
+		return 0;
 	}
 
 	uint64 x = 0;
@@ -324,7 +324,7 @@ int main(int argc, char **argv)
 	{
 		exit(1);
 	}
-	LONGLONG file_size_in_bytes = file_size.QuadPart;
+	LONGLONG file_size_in_bytes = file_size.QuadPart - 2;
 	HANDLE file_map = CreateFileMappingA(file, 0, PAGE_READONLY, 0, 0, 0);
 	if (file_map == 0)
 	{
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
 	int i = 0;
 	int elem = 0;
 
-	while(i < file_size_in_bytes-3)
+	while(i < file_size_in_bytes)
 	{
 		debug_current_char = file_data[i];
 		if(file_data[i] == '\n' || file_data[i] == ' ' || file_data[i] == '\r' || file_data[i] == '\t')
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
 		}
 
 		i += (parse_and_extract_value(file_data + i, &string_to_print,
-			file_size_in_bytes - 3)); 
+			file_size_in_bytes)); 
 		debug_current_char = file_data[i];
 		//+1 indicates to start further after parsing ':'
 		// i += (parse_and_extract_key(file_data + i, &key_to_print) + 1);
