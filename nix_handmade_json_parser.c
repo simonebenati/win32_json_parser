@@ -3,14 +3,16 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
 #include "win32_handmade_json_parser.h"
 
-#define assert(expression) if(!expression) {*(int *)0 = 0;}
+#define assert(expression) if(!(expression)) {*(int *)0 = 0;}
 
-// int x = 0;
+int x = 0;
 
 internal inline uint64 find_comma(const char *json_value, const uint64 file_size, int i)
 {
@@ -28,7 +30,7 @@ internal inline uint64 find_comma(const char *json_value, const uint64 file_size
 	if(json_value[x] != ',' && json_value[x] != ']' && json_value[x] != '}') // Square bracket because nested elem.
 	{
 		putchar(json_value[x]);
-		putchar("\n");
+		putchar('\n');
 		puts("panic: malformed json");
 		exit(1);
 	}
@@ -328,16 +330,17 @@ size_t calc_file_size(FILE *fptr)
 
 int main(int argc, char **argv)
 {
-	int fd = open("file.json", O_RDONLY);
+	const char file[] = "/Users/simone/hack/win32_json_parser/file.json";
+	int fd = open(file, O_RDONLY, 0644);
 	assert(fd != -1);
 
 	struct stat file_stats;
-	size_t file_size = stat("file.json", &file_stats);
+	int file_size = stat(file, &file_stats);
 	assert(file_size != -1)
 	
-	file_size = (size_t)file_stats.st_size;
+	uint64 file_size_in_bytes = file_stats.st_size-2;
 	
-	const char* file_data = mmap(NULL, file_size, PROT_READ, fd, 0);
+	const char* file_data = mmap(NULL, file_size_in_bytes, PROT_READ, MAP_PRIVATE, fd, 0);
 	assert(file_data != MAP_FAILED);
 	
 	//NOTE(simone): verify if this int is suitable
@@ -362,8 +365,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		i += (parse_and_extract_value(file_data + i, &string_to_print,
-			file_size_in_bytes)); 
+		i += (parse_and_extract_value(file_data + i, &string_to_print, file_size_in_bytes)); 
 		debug_current_char = file_data[i];
 		//+1 indicates to start further after parsing ':'
 		// i += (parse_and_extract_key(file_data + i, &key_to_print) + 1);
